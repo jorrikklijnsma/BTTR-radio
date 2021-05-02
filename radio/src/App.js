@@ -11,12 +11,10 @@ function App() {
   const [videoInfo, setVideoInfo] = useState({});
 
   const getVideoInfo = (youtubeId) => {
-    console.log(youtubeId);
-    fetch(`http://noembed.com/embed?url=http%3A//www.youtube.com/watch%3Fv%3${youtubeId}`, {
+    fetch(`http://noembed.com/embed?url=http%3A//www.youtube.com/watch%3Fv%3D${youtubeId}`, {
         method: 'get'
     }).then(response => response.json())
     .then(data => {
-        console.log(data);
         setVideoInfo(data);
     });
   };
@@ -34,46 +32,49 @@ function App() {
     }, message.timer)
   };
 
-  const getNewSongId = new Promise((resolve, reject) => {
-    const randomStart = Math.random();
-    firebase.database().ref("radio/songList")
-    .orderByChild('randomize')
-    .startAt(randomStart)
-    .limitToFirst(1)
-    .once("value")
-    .then((snapshot) => {
-      if (!snapshot.exists()) {
-        resolve('yydNF8tuVmU');
-      } else {
-        let returnVal;
-        snapshot.forEach((child) => {
-          returnVal = child.val();
-        });
-        firebase.database().ref("radio/playNext").set(returnVal.youtubeId);
-        resolve(returnVal.youtubeId);
-      }
-    });
-  });
-
-  const getNextSongId = new Promise((resolve, reject) => {
-    firebase.database().ref("radio/playNext")
-    .get()
-    .then((snapshot) => {
-      if (!snapshot.exists()) {
-        reject(false);
-      } else {
-        resolve(snapshot.val());
-      }
-    });
-  });
-
   const songEnded = () => {
-    getNextSongId.then((response) => {
+    console.log('video ended');
+      new Promise((resolve, reject) => {
+        console.log('test')
+        firebase.database().ref("radio/playNext").get().then((snapshot) => {
+        console.log('then run');
+        if (!snapshot.exists()) {
+          reject(false);
+        } else {
+          if (snapshot.val() === videoId) {
+            console.log('Next video is same');
+            reject(false);
+          } else {
+            console.log('Next video is set');
+            resolve(snapshot.val());
+          }
+        }
+      })
+    }).then((response) => {
       setVideo(response);
       getVideoInfo(response);
     })
     .catch(() => {
-      getNewSongId.then((response) => {
+      const randomStart = Math.random();
+      new Promise((resolve, reject) => {
+        firebase.database().ref("radio/songList")
+        .orderByChild('randomize')
+        .startAt(randomStart)
+        .limitToFirst(1)
+        .once("value")
+        .then((snapshot) => {
+          if (!snapshot.exists()) {
+            resolve('yydNF8tuVmU');
+          } else {
+            let returnVal;
+            snapshot.forEach((child) => {
+              returnVal = child.val();
+            });
+            firebase.database().ref("radio/playNext").set(returnVal.youtubeId);
+            resolve(returnVal.youtubeId);
+          }
+        })
+      }).then((response) => {
         setVideo(response);
         getVideoInfo(response);
       })
@@ -81,8 +82,8 @@ function App() {
   };
 
   const opts = {
-    height: '0',
-    width: '0',
+    height: '400',
+    width: '400',
     playerVars: {
       // https://developers.google.com/youtube/player_parameters
       autoplay: 1,
